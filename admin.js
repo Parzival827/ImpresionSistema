@@ -1,4 +1,4 @@
-import { all, get, save, isAdmin, makeCookie, sha } from '../lib/store.js';
+import { all, get, save, isAdmin, makeCookie, sha } from './store.js';
 import crypto from 'node:crypto';
 const ESTADOS = ['Nuevo', 'Cotizado', 'Aprobado', 'Imprimiendo', 'Listo', 'Entregado', 'Cancelado'];
 export default async function handler(req, res) {

@@ -1,4 +1,4 @@
-import { get, save, newId } from '../lib/store.js';
+import { get, save, newId } from './store.js';
 const t = (v, n) => String(v ?? '').trim().slice(0, n);
 export default async function handler(req, res) {
   if (req.method === 'GET') {

@@ -1,1 +1,16 @@
-{ "cleanUrls": true }
+{
+  "version": 2,
+  "builds": [
+    { "src": "upload.js", "use": "@vercel/node" },
+    { "src": "pedido.js", "use": "@vercel/node" },
+    { "src": "admin.js", "use": "@vercel/node" },
+    { "src": "*.html", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/upload", "dest": "/upload.js" },
+    { "src": "/api/pedido", "dest": "/pedido.js" },
+    { "src": "/api/admin", "dest": "/admin.js" },
+    { "src": "/admin", "dest": "/admin.html" },
+    { "src": "/", "dest": "/index.html" }
+  ]
+}
