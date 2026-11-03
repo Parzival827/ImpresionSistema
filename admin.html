@@ -1,0 +1,28 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Admin · Pedidos 3D</title><style>*{box-sizing:border-box}body{font:16px/1.5 system-ui,sans-serif;margin:0;background:#f4f6fa;color:#1d2433}main{max-width:720px;margin:0 auto;padding:20px}h1{margin:.2em 0}.card{background:#fff;border-radius:14px;padding:20px;margin:16px 0;box-shadow:0 1px 4px #0002}label{display:block;font-weight:600;margin:12px 0 4px;font-size:14px}input,select,textarea,button{width:100%;padding:10px;border:1px solid #c9d1e0;border-radius:8px;font:inherit}button{background:#1f4e79;color:#fff;border:0;cursor:pointer;font-weight:600;margin-top:16px}button:disabled{opacity:.5}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:560px){.row{grid-template-columns:1fr}}.muted{color:#667;font-size:14px}.hp{position:absolute;left:-999px}.ok{background:#e6f6ea;border:1px solid #9fd5ab}.err{color:#b00020}.tag{display:inline-block;padding:2px 10px;border-radius:99px;background:#dde7f5;font-size:13px;font-weight:600} main{max-width:980px}table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden}td,th{padding:9px 10px;border-bottom:1px solid #e4e8f0;text-align:left;font-size:14px}tr.r{cursor:pointer}tr.r:hover{background:#eef3fb}.bar{display:flex;gap:10px}.bar>*{margin:0;width:auto}a{color:#1f4e79}</style></head><body><main>
+<h1>Panel de pedidos</h1>
+<div id="login" class="card"><label>Contraseña</label><input id="pw" type="password"><button id="go">Entrar</button><p id="le" class="err"></p></div>
+<div id="app" hidden><div class="bar"><select id="flt"><option value="">Todos los estados</option></select><button id="csv">Exportar CSV</button><button id="rf">Actualizar</button></div><p id="n" class="muted"></p>
+<table><thead><tr><th>Fecha</th><th>Cliente</th><th>Pieza</th><th>Cant.</th><th>Estado</th><th>Precio</th><th>Debe</th></tr></thead><tbody id="tb"></tbody></table>
+<div id="det" class="card" hidden></div></div></main><script>
+const $=s=>document.querySelector(s),E=['Nuevo','Cotizado','Aprobado','Imprimiendo','Listo','Entregado','Cancelado'];let D=[];
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),m=n=>'$'+Number(n||0).toFixed(2);
+const api=(a,b)=>fetch('/api/admin?action='+a,b?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}:{});
+$('#flt').innerHTML+=E.map(e=>'<option>'+e+'</option>').join('');
+$('#go').onclick=async()=>{const r=await api('login',{password:$('#pw').value});if(r.ok){$('#login').hidden=true;$('#app').hidden=false;load();}else $('#le').textContent=(await r.json()).error;};
+$('#pw').onkeydown=e=>e.key==='Enter'&&$('#go').click();
+async function load(){const r=await api('list');if(!r.ok){$('#login').hidden=false;$('#app').hidden=true;return;}$('#login').hidden=true;$('#app').hidden=false;D=await r.json();draw();}
+function draw(){const f=$('#flt').value,L=D.filter(o=>!f||o.estado===f);$('#n').textContent=L.length+' pedidos';
+ $('#tb').innerHTML=L.map(o=>'<tr class="r" data-i="'+o.id+'"><td>'+o.creado.slice(0,10)+'</td><td>'+esc(o.nombre)+'</td><td>'+esc(o.pieza)+'</td><td>'+o.cantidad+'</td><td><span class="tag">'+o.estado+'</span></td><td>'+(o.precio!=null?m(o.precio):'—')+'</td><td>'+(o.precio!=null?m(o.precio-o.pagado):'—')+'</td></tr>').join('');
+ document.querySelectorAll('tr.r').forEach(t=>t.onclick=()=>open(t.dataset.i));}
+$('#flt').onchange=draw;$('#rf').onclick=load;
+function open(id){const o=D.find(x=>x.id===id),d=$('#det');d.hidden=false;
+ d.innerHTML='<h2>'+esc(o.pieza)+' <small class="muted">'+o.id+'</small></h2><p><b>'+esc(o.nombre)+'</b> · <a href="mailto:'+esc(o.email)+'">'+esc(o.email)+'</a> · '+esc(o.telefono)+'</p><p>Material: '+esc(o.material)+' · Color: '+esc(o.color)+' · Cantidad: '+o.cantidad+' · Para: '+esc(o.fecha_deseada||'—')+'</p><p>'+esc(o.descripcion)+'</p>'
+ +'<p>'+(o.archivos.map(a=>'<a href="'+esc(a.url)+'" target="_blank" download>'+esc(a.name)+'</a> ('+(a.size/1048576).toFixed(1)+' MB)').join('<br>')||'Sin archivos')+'</p>'
+ +'<div class="row"><div><label>Estado</label><select id="e">'+E.map(x=>'<option'+(x===o.estado?' selected':'')+'>'+x+'</option>').join('')+'</select></div><div><label>Precio cotizado (con IVA)</label><input id="p" type="number" step="0.01" value="'+(o.precio??'')+'"></div></div>'
+ +'<label>Pagado</label><input id="g" type="number" step="0.01" value="'+o.pagado+'"><label>Mensaje para el cliente</label><textarea id="ms" rows="2">'+esc(o.mensaje)+'</textarea><label>Notas internas</label><textarea id="nt" rows="2">'+esc(o.notas)+'</textarea><button id="sv">Guardar</button>';
+ d.scrollIntoView({behavior:'smooth'});
+ $('#sv').onclick=async()=>{const r=await api('update',{id,estado:$('#e').value,precio:$('#p').value,pagado:$('#g').value,mensaje:$('#ms').value,notas:$('#nt').value});if(r.ok){await load();d.hidden=true;}else alert((await r.json()).error);};}
+$('#csv').onclick=()=>{const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"',H=['Fecha','Cliente','Pieza','Cantidad','Material','Precio','Estado','Pagado','Codigo'];
+ const t=[H,...D.map(o=>[o.creado.slice(0,10),o.nombre,o.pieza,o.cantidad,o.material,o.precio,o.estado,o.pagado,o.id])].map(r=>r.map(q).join(',')).join('\n');
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+t],{type:'text/csv'}));a.download='pedidos.csv';a.click();};
+load();</script></body></html>

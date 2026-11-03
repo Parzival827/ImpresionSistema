@@ -1,0 +1,29 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pedidos de impresión 3D</title><style>*{box-sizing:border-box}body{font:16px/1.5 system-ui,sans-serif;margin:0;background:#f4f6fa;color:#1d2433}main{max-width:720px;margin:0 auto;padding:20px}h1{margin:.2em 0}.card{background:#fff;border-radius:14px;padding:20px;margin:16px 0;box-shadow:0 1px 4px #0002}label{display:block;font-weight:600;margin:12px 0 4px;font-size:14px}input,select,textarea,button{width:100%;padding:10px;border:1px solid #c9d1e0;border-radius:8px;font:inherit}button{background:#1f4e79;color:#fff;border:0;cursor:pointer;font-weight:600;margin-top:16px}button:disabled{opacity:.5}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:560px){.row{grid-template-columns:1fr}}.muted{color:#667;font-size:14px}.hp{position:absolute;left:-999px}.ok{background:#e6f6ea;border:1px solid #9fd5ab}.err{color:#b00020}.tag{display:inline-block;padding:2px 10px;border-radius:99px;background:#dde7f5;font-size:13px;font-weight:600}</style></head><body><main>
+<h1>Impresión 3D a pedido</h1><p class="muted">Envía tu archivo o una imagen de referencia y te mandamos una cotización.</p>
+<form id="f" class="card"><input class="hp" name="web" tabindex="-1" autocomplete="off">
+<div class="row"><div><label>Nombre *</label><input name="nombre" required></div><div><label>Correo *</label><input name="email" type="email" required></div></div>
+<div class="row"><div><label>WhatsApp / teléfono</label><input name="telefono"></div><div><label>Fecha deseada</label><input name="fecha_deseada" type="date"></div></div>
+<label>¿Qué pieza necesitas? *</label><input name="pieza" required placeholder="Ej: soporte para auriculares">
+<label>Descripción, medidas, uso</label><textarea name="descripcion" rows="4"></textarea>
+<div class="row"><div><label>Material</label><select name="material"><option>No sé, recomiéndame</option><option>PLA</option><option>PLA+</option><option>PETG</option><option>ABS/ASA</option><option>TPU (flexible)</option></select></div><div><label>Color</label><input name="color"></div></div>
+<label>Cantidad</label><input name="cantidad" type="number" min="1" value="1">
+<label>Archivos (STL, STEP, 3MF, OBJ, imágenes o PDF · máx. 100 MB c/u)</label><input id="files" type="file" multiple accept=".stl,.step,.stp,.3mf,.obj,.png,.jpg,.jpeg,.webp,.pdf">
+<button id="b">Enviar pedido</button><p id="msg" class="muted"></p></form>
+<div id="done" class="card ok" hidden></div>
+<div class="card"><b>Consultar mi pedido</b><label>Código de seguimiento</label><input id="code" placeholder="XXXX-XXXX-XXXX"><button id="q">Ver estado</button><div id="st"></div></div>
+</main><script type="module">
+import { upload } from 'https://esm.sh/@vercel/blob@1/client';
+const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+$('#f').onsubmit=async e=>{e.preventDefault();const b=$('#b'),m=$('#msg');b.disabled=true;m.className='muted';
+ try{const fs=[...$('#files').files],archivos=[];
+  for(const [i,f] of fs.entries()){m.textContent='Subiendo '+(i+1)+' de '+fs.length+': '+f.name+'…';
+   const r=await upload('uploads/'+Date.now()+'-'+f.name.replace(/[^\w.\-]/g,'_'),f,{access:'public',handleUploadUrl:'/api/upload'});archivos.push({name:f.name,url:r.url,size:f.size});}
+  m.textContent='Enviando pedido…';const d=Object.fromEntries(new FormData(e.target));d.archivos=archivos;
+  const r=await fetch('/api/pedido',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}),j=await r.json();
+  if(!r.ok)throw new Error(j.error);e.target.hidden=true;const x=$('#done');x.hidden=false;
+  x.innerHTML='<h2>¡Pedido recibido!</h2><p>Tu código de seguimiento es:</p><h2>'+esc(j.id)+'</h2><p class="muted">Guárdalo para consultar tu cotización y el estado de tu pedido.</p>';
+ }catch(er){m.className='err';m.textContent='Error: '+er.message;b.disabled=false;}};
+$('#q').onclick=async()=>{const r=await fetch('/api/pedido?id='+encodeURIComponent($('#code').value.trim()));const j=await r.json();
+ $('#st').innerHTML=r.ok?'<p><b>'+esc(j.pieza)+'</b> ×'+j.cantidad+'<br><span class="tag">'+esc(j.estado)+'</span></p>'+(j.precio!=null?'<p>Precio: <b>$'+j.precio.toFixed(2)+'</b> · Pagado: $'+Number(j.pagado).toFixed(2)+'</p>':'<p class="muted">Aún sin cotizar.</p>')+(j.mensaje?'<p>'+esc(j.mensaje)+'</p>':''):'<p class="err">'+esc(j.error)+'</p>';};
+const p=new URLSearchParams(location.search).get('id');if(p){$('#code').value=p;$('#q').click();}
+</script></body></html>
